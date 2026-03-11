@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control Servidor Minecraft</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        h1 {
+            color: #4ade80;
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 2rem;
+        }
+        .subtitle {
+            color: #94a3b8;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .status-card {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        .status-label {
+            color: #94a3b8;
+            font-size: 0.9rem;
+            margin-bottom: 8px;
+        }
+        .status-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .status-running { color: #4ade80; }
+        .status-stopped { color: #f87171; }
+        .status-pending { color: #fbbf24; }
+        .server-ip {
+            color: #60a5fa;
+            font-family: monospace;
+            font-size: 1.1rem;
+            margin-top: 10px;
+        }
+        .buttons {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        button {
+            flex: 1;
+            padding: 15px 25px;
+            font-size: 1rem;
+            font-weight: 600;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .btn-start {
+            background: linear-gradient(135deg, #4ade80, #22c55e);
+            color: #000;
+        }
+        .btn-start:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(74, 222, 128, 0.4);
+        }
+        .btn-stop {
+            background: linear-gradient(135deg, #f87171, #ef4444);
+            color: #fff;
+        }
+        .btn-stop:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(248, 113, 113, 0.4);
+        }
+        .btn-refresh {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            width: 100%;
+        }
+        .btn-refresh:hover:not(:disabled) {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        .log {
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 20px;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+        .log-entry {
+            color: #94a3b8;
+            font-family: monospace;
+            font-size: 0.85rem;
+            margin-bottom: 5px;
+        }
+        .log-entry.success { color: #4ade80; }
+        .log-entry.error { color: #f87171; }
+        .token-input {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 8px;
+            background: rgba(0,0,0,0.3);
+            color: #fff;
+            font-size: 1rem;
+        }
+        .token-input::placeholder {
+            color: #64748b;
+        }
+
+        /* Estilos responsivos para dispositivos móviles */
+        @media screen and (max-width: 768px) {
+            body {
+                padding: 0 !important;
+                align-items: flex-start !important;
+            }
+            .container {
+                max-width: 100% !important;
+                width: 100% !important;
+                padding: 30px 20px !important;
+                border-radius: 0 !important;
+                min-height: 100vh !important;
+            }
+            h1 {
+                font-size: 1.8rem !important;
+            }
+            .subtitle {
+                font-size: 1.1rem !important;
+            }
+            .status-card {
+                padding: 25px !important;
+            }
+            .buttons {
+                flex-direction: column !important;
+                gap: 12px !important;
+            }
+            button {
+                padding: 16px 20px !important;
+                font-size: 1.1rem !important;
+            }
+            .status-value {
+                font-size: 1.4rem !important;
+            }
+            .server-ip {
+                font-size: 1rem !important;
+                word-break: break-all !important;
+            }
+            .token-input {
+                padding: 15px !important;
+                font-size: 1.1rem !important;
+            }
+            .log {
+                max-height: 150px !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎮 Minecraft Server</h1>
+        <p class="subtitle">Panel de Control Remoto</p>
+        
+        <input type="password" id="authToken" class="token-input" 
+               placeholder="🔑 Ingresa tu token de acceso" 
+               value="">
+        
+        <div class="status-card">
+            <div class="status-label">Estado del Servidor</div>
+            <div id="statusValue" class="status-value status-pending">Verificando...</div>
+            <div id="serverIp" class="server-ip"></div>
+        </div>
+        
+        <div class="buttons">
+            <button id="btnStart" class="btn-start" onclick="startServer()">
+                ▶️ Iniciar
+            </button>
+            <button id="btnStop" class="btn-stop" onclick="stopServer()">
+                ⏹️ Detener
+            </button>
+        </div>
+        
+        <button class="btn-refresh" onclick="checkStatus()">
+            🔄 Actualizar Estado
+        </button>
+        
+        <div class="log" id="logContainer">
+            <div class="log-entry">Sistema listo...</div>
+        </div>
+    </div>
+
+    <script>
+        // ⚠️ CONFIGURA ESTOS VALORES:
+        const API_URL = 'https://9chhqll7cl.execute-api.us-east-2.amazonaws.com/prod';
+        
+        function getToken() {
+            return document.getElementById('authToken').value;
+        }
+        
+        function log(message, type = '') {
+            const container = document.getElementById('logContainer');
+            const time = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.textContent = `[${time}] ${message}`;
+            container.insertBefore(entry, container.firstChild);
+        }
+        
+        function updateStatus(state, ip = '') {
+            const statusEl = document.getElementById('statusValue');
+            const ipEl = document.getElementById('serverIp');
+            
+            statusEl.className = 'status-value';
+            
+            switch(state) {
+                case 'running':
+                    statusEl.textContent = '🟢 En línea';
+                    statusEl.classList.add('status-running');
+                    ipEl.textContent = ip ? `📍 ${ip}:25565` : '';
+                    break;
+                case 'stopped':
+                    statusEl.textContent = '🔴 Detenido';
+                    statusEl.classList.add('status-stopped');
+                    ipEl.textContent = '';
+                    break;
+                case 'pending':
+                case 'stopping':
+                case 'starting':
+                    statusEl.textContent = '🟡 ' + state.charAt(0).toUpperCase() + state.slice(1);
+                    statusEl.classList.add('status-pending');
+                    ipEl.textContent = '';
+                    break;
+                default:
+                    statusEl.textContent = '⚪ ' + state;
+                    ipEl.textContent = '';
+            }
+        }
+        
+    async function apiCall(endpoint, method = 'POST') {
+        const token = getToken();
+        if (!token) {
+            log('⚠️ Ingresa tu token de acceso', 'error');
+            return null;
+        }
+        
+        try {
+            // Token en query string
+            const url = `${API_URL}${endpoint}?token=${encodeURIComponent(token)}`;
+            const response = await fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            const data = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(data.message || data.error || 'Error en la solicitud');
+            }
+            
+            return data;
+        } catch (error) {
+            log(`❌ Error: ${error.message}`, 'error');
+            return null;
+        }
+    }
+        
+        async function checkStatus() {
+            log('🔍 Verificando estado...');
+            const data = await apiCall('/status', 'GET');
+            
+            if (data) {
+                updateStatus(data.state, data.public_ip);
+                log(`✅ Estado: ${data.state}`, 'success');
+            }
+        }
+        
+        async function startServer() {
+            document.getElementById('btnStart').disabled = true;
+            log('🚀 Iniciando servidor...');
+            
+            const data = await apiCall('/start', 'POST');
+            
+            if (data) {
+                log(`✅ ${data.message}`, 'success');
+                updateStatus('starting');
+                
+                // Auto-refresh después de 30 segundos
+                setTimeout(checkStatus, 30000);
+            }
+            
+            document.getElementById('btnStart').disabled = false;
+        }
+        
+        async function stopServer() {
+            if (!confirm('¿Seguro que deseas detener el servidor?')) return;
+            
+            document.getElementById('btnStop').disabled = true;
+            log('🛑 Deteniendo servidor...');
+            
+            const data = await apiCall('/stop', 'POST');
+            
+            if (data) {
+                log(`✅ ${data.message}`, 'success');
+                updateStatus('stopping');
+                
+                // Auto-refresh después de 30 segundos
+                setTimeout(checkStatus, 30000);
+            }
+            
+            document.getElementById('btnStop').disabled = false;
+        }
+        
+        // Verificar estado al cargar
+        window.onload = function() {
+            log('🎮 Panel cargado');
+            // Si ya hay token guardado, verificar estado
+            if (getToken()) {
+                checkStatus();
+            }
+        };
+    </script>
+</body>
+</html>
